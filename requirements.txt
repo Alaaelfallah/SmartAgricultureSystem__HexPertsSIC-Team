@@ -16,9 +16,9 @@ torchvision
 timm
 
 # Irrigation model
-# The artifacts were saved with scikit-learn 1.8/1.9; run `pip freeze | findstr scikit`
-# in your working environment and pin the exact version you trained/tested with.
-scikit-learn>=1.9
+# The irrigation artifacts must be saved with the same scikit-learn version that runs the app.
+# After installing or upgrading scikit-learn, run retrain_irrigation_model.py (see README).
+scikit-learn==1.9.1
 joblib
 
 # RAG

@@ -4,7 +4,7 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CHROMA_PATH = os.path.join(BASE_DIR, "rag_data", "chroma")
 
 COLLECTION_NAME = "agriculture_rag"

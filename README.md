@@ -33,37 +33,28 @@ models/
 views/                  Streamlit tabs
 styles/custom_css.py    UI styling
 artifacts/              trained models and preprocessing files
-scripts/
-  build_rag.py           builds the ChromaDB knowledge base
-  inspect_ckpt.py        inspects the CNN checkpoint
-tests/                  project test scripts
+build_rag.py            builds the ChromaDB knowledge base
+retrain_irrigation_model.py   re-saves the irrigation model with the installed scikit-learn
+postman/                Postman collection and test images (API tests)
+test_*.py               test scripts
 ```
 
 ## Setup
 
-Run these commands in PowerShell from the project root:
-
-```powershell
-py -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-# Create .env in the project root and add GEMINI_API_KEY=your_api_key_here
-.\.venv\Scripts\python.exe -m scripts.build_rag
+```bash
+python -m venv .venv
+.venv\Scripts\activate            # Windows
+pip install -r requirements.txt
+copy .env.example .env            # then put your GEMINI_API_KEY in .env
+python build_rag.py               # builds rag_data/chroma (downloads the dataset)
 ```
 
 ## Run
 
-```powershell
-.\.venv\Scripts\python.exe -m streamlit run app.py
-.\.venv\Scripts\python.exe -m uvicorn api.main:app --reload
+```bash
+streamlit run app.py              # web interface
+python -m uvicorn api.main:app   # API, docs at http://127.0.0.1:8000/docs (run ONE server only)
 ```
-
-Run the safety checks from the project root with:
-
-```powershell
-.\.venv\Scripts\python.exe -m tests.test_safety
-```
-
-The API documentation is available at http://127.0.0.1:8000/docs.
 
 Example request:
 
@@ -77,6 +68,37 @@ curl -X POST http://127.0.0.1:8000/predict \
 
 The response contains `plant_analysis`, `irrigation`, `recommendation` and a `warnings` list
 (crop/photo mismatch, low confidence).
+
+`recommendation` is one unified text with three sections (Plant health, Irrigation, Recommended
+actions) followed by a safety notice. When the photo does not match the selected crop, or the plant is
+healthy and no question was asked, the language model is not called: a fixed message and a factual
+irrigation sentence are returned instead. Every response carries the header `X-Process-Time-ms`
+(server processing time).
+
+## Testing
+
+- Unit-style scripts: `python test_safety.py`, `python test_irrigation_integration.py` (and the other `test_*.py`).
+- API tests with Postman (`postman/`): import `HexPerts_API.postman_collection.json`, set Postman's
+  Working directory to the `postman` folder, start the API and run the folders in order.
+  It covers the field/plant scenarios, crop-photo consistency, input validation, safety and grounding.
+  Run folder `05 - Latency benchmark` with 10 iterations to get average, p95 and the server-side time.
+  See `postman/README.md`.
+
+## Retraining the irrigation model
+
+The artifacts in `artifacts/` must be saved with the scikit-learn version that runs the app, otherwise
+scikit-learn prints an `InconsistentVersionWarning`. To retrain and re-save them with the installed version,
+give the script the project's preprocessed dataset (zip or folder):
+
+```bash
+python retrain_irrigation_model.py "C:\path\to\Smart_Agriculture_Preprocessed.zip"
+```
+
+The script checks that the data matches the saved scaler, retrains with the documented configuration
+(GridSearchCV over n_estimators [50, 100] and max_depth [5, 10], cv=3), compares the new model with the
+current one on train / validation / test, and only replaces it if it is not worse. The encoder and scaler
+are re-saved without refitting, because the dataset was preprocessed with them. The previous files are
+kept in `artifacts/backup_before_retrain/`. Restart the API and the app afterwards.
 
 ## Safety
 
@@ -93,5 +115,7 @@ The substance list in `models/safety.py` is a starting point and should be revie
 - The irrigation model predicts whether irrigation is needed; it does not estimate a water volume.
   It supports Carrot, Chilli, Potato, Tomato and Wheat.
 - The disease and irrigation models share only some crops (Tomato, Potato, Pepper/Chilli).
+- The Streamlit app calls the models directly; the FastAPI backend is meant for other clients
+  (mobile app, tests, integrations).
 - The knowledge base covers a limited set of crops and diseases; for others the system answers
   that it does not have enough information.

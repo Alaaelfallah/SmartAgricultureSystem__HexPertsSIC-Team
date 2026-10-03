@@ -1,17 +1,15 @@
 import joblib
 import pandas as pd
 import numpy as np
-from pathlib import Path
 
 
 # =========================
 # Load trained artifacts
 # =========================
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-MODEL_PATH = PROJECT_ROOT / "artifacts" / "random_forest_model.pkl"
-ENCODER_PATH = PROJECT_ROOT / "artifacts" / "encoder.pkl"
-SCALER_PATH = PROJECT_ROOT / "artifacts" / "scaler.pkl"
+MODEL_PATH = "artifacts/random_forest_model.pkl"
+ENCODER_PATH = "artifacts/encoder.pkl"
+SCALER_PATH = "artifacts/scaler.pkl"
 
 model = joblib.load(MODEL_PATH)
 encoder = joblib.load(ENCODER_PATH)

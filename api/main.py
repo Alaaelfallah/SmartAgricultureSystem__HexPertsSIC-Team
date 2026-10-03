@@ -1,3 +1,4 @@
+import time
 from io import BytesIO
 from typing import List, Optional
 
@@ -94,6 +95,39 @@ def check_crop_consistency(crop_id, cnn_label):
     ]
 
 
+def normalize_crop(crop_id):
+    """
+    Crop name used for knowledge-base retrieval.
+
+    The knowledge base is tagged with the disease-model vocabulary
+    (for example "pepper"), while the irrigation model uses "Chilli".
+    """
+
+    crop = crop_id.strip().lower()
+
+    return CROP_ALIASES.get(crop, crop)
+
+
+def irrigation_summary(irrigation_result, sensor_data):
+    """
+    One factual sentence built only from the irrigation model output
+    and the sensor readings. It contains no agronomic advice, so it is
+    safe to use when the LLM is not called.
+    """
+
+    if irrigation_result["prediction"] == 1:
+        verdict = "The irrigation model indicates that irrigation is required"
+    else:
+        verdict = "The irrigation model indicates that irrigation is not required"
+
+    return (
+        f"{verdict} (confidence {irrigation_result['confidence']}%) "
+        f"based on soil moisture {sensor_data['soil_moisture']}%, "
+        f"temperature {sensor_data['temperature']}\u00b0C and "
+        f"air humidity {sensor_data['humidity']}%."
+    )
+
+
 # ============================================================
 # FastAPI application
 # ============================================================
@@ -103,6 +137,19 @@ app = FastAPI(
     version="1.0.0",
     description="AI-powered smart agriculture backend",
 )
+
+
+# ============================================================
+# Latency header (used when testing with Postman)
+# ============================================================
+
+@app.middleware("http")
+async def add_process_time_header(request, call_next):
+    start = time.perf_counter()
+    response = await call_next(request)
+    elapsed_ms = (time.perf_counter() - start) * 1000
+    response.headers["X-Process-Time-ms"] = f"{elapsed_ms:.0f}"
+    return response
 
 
 # ============================================================
@@ -132,7 +179,7 @@ def health():
 # ============================================================
 
 @app.post("/predict", response_model=PredictResponse)
-async def predict(
+def predict(
     image: UploadFile = File(...),
 
     crop_id: str = Form(...),
@@ -146,6 +193,10 @@ async def predict(
     user_query: str = Form(DEFAULT_QUERY),
 ):
     """
+    This is a plain `def` (not `async def`) on purpose: the CNN, the
+    Random Forest and the Gemini call are blocking, so FastAPI runs
+    this function in a worker thread and the server stays responsive.
+
     Run the complete HexPerts AI pipeline:
 
     1. CNN -> plant disease prediction
@@ -153,6 +204,8 @@ async def predict(
     3. Consistency checks (crop vs. image, confidence)
     4. RAG -> grounded agricultural recommendation
     """
+
+    user_query = user_query.strip() or DEFAULT_QUERY
 
     # ========================================================
     # 1. Validate image
@@ -165,7 +218,7 @@ async def predict(
         )
 
     try:
-        image_bytes = await image.read()
+        image_bytes = image.file.read()
         plant_image = Image.open(
             BytesIO(image_bytes)
         ).convert("RGB")
@@ -258,22 +311,31 @@ async def predict(
         "humidity": humidity,
     }
 
+    irrigation_text = irrigation_summary(
+        irrigation_result,
+        sensor_data
+    )
+
     if not crop_matches:
 
         # The image does not match the selected crop, so a
         # disease-specific recommendation would be misleading.
+        # The irrigation result does not depend on the photo, so
+        # it is still reported.
         recommendation = (
             "No disease-specific recommendation was generated "
             "because the photo does not appear to match the "
             "selected crop. Please check the crop selection or "
-            "retake the photo."
+            "retake the photo.\n\n"
+            f"Irrigation: {irrigation_text}"
         )
 
     elif is_healthy and user_query == DEFAULT_QUERY:
 
         recommendation = (
-            "No disease was detected in the leaf image. Continue "
-            "routine monitoring and follow the irrigation result."
+            "Plant health: no disease was detected in the leaf "
+            "image. Continue routine monitoring.\n\n"
+            f"Irrigation: {irrigation_text}"
         )
 
     else:
@@ -284,7 +346,7 @@ async def predict(
                 cnn_result=cnn_result,
                 irrigation_result=irrigation_result,
                 sensor_data=sensor_data,
-                crop_type=crop_id,
+                crop_type=normalize_crop(crop_id),
             )
 
         except Exception as e:

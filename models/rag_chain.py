@@ -90,7 +90,7 @@ embedder = SentenceTransformer(
 # 6. CNN label -> knowledge-base vocabulary
 # ============================================================
 
-# The knowledge base (built by scripts.build_rag) tags each document
+# The knowledge base (built by build_rag.py) tags each document
 # with a lowercase crop name and a lowercase disease name such as
 # "early blight" or "bacterial leaf spot".
 #
@@ -449,15 +449,51 @@ def generate_rag_llm_advice(
         )
 
         output_rule = (
-            "Clearly separate existing model outputs from\n"
-            "    knowledge-base-based recommendations."
+            "Write ONE unified recommendation for the farmer that\n"
+            "    combines the disease result and the irrigation result,\n"
+            "    using the three sections described in the TASK below.\n"
+            "    Model outputs may only be restated, never changed; every\n"
+            "    action or treatment must come from the retrieved context."
         )
+
+        task_text = """Write ONE unified recommendation for the farmer, in simple
+language, using exactly these three short sections:
+
+Plant health:
+  State the CNN prediction and its confidence exactly as provided,
+  in plain words (crop and disease, or "no disease detected" if the
+  plant is healthy).
+
+Irrigation:
+  State the irrigation model result exactly as provided and mention
+  the sensor values. Add irrigation advice ONLY if the retrieved
+  context supports it. Never give water amounts.
+
+Recommended actions:
+  Practical steps taken ONLY from the retrieved context, for the
+  detected disease and crop. If the plant is healthy, recommend
+  routine monitoring and do not recommend any treatment. If the
+  retrieved context does not support a specific recommendation,
+  write the insufficient-information message from the rules above
+  in this section.
+
+Keep the whole answer under about 150 words. Do not use tables.
+Do not add facts that are not in the retrieved context."""
 
     else:
 
         system_section = (
             "No system outputs are available for this question."
         )
+
+        task_text = """Provide a concise agricultural recommendation.
+
+Use the retrieved agricultural context as the only source
+for agricultural advice and treatment information.
+
+If the retrieved context does not support a specific
+recommendation, clearly state that the available knowledge
+base does not contain enough information."""
 
         output_rule = (
             "No model outputs or sensor values are available for\n"
@@ -558,18 +594,7 @@ USER QUERY
 TASK
 ------------------------------------------------------------
 
-Provide a concise agricultural recommendation.
-
-Use the retrieved agricultural context as the only source
-for agricultural advice and treatment information.
-
-You may refer to the CNN prediction and irrigation model
-result as existing system outputs, but do not modify,
-recalculate, or reinterpret them.
-
-If the retrieved context does not support a specific
-recommendation, clearly state that the available knowledge
-base does not contain enough information.
+{task_text}
 """
 
 

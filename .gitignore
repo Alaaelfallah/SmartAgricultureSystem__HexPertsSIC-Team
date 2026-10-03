@@ -7,5 +7,9 @@ venv/
 .env
 .streamlit/secrets.toml
 
-# Rebuilt with: python -m scripts.build_rag
+# Rebuilt with: python build_rag.py
 rag_data/
+
+# Backup made by retrain_irrigation_model.py
+artifacts/backup_before_retrain/
+postman/.json

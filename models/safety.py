@@ -2,7 +2,7 @@
 Shared safety rules for the HexPerts RAG pipeline.
 
 Used in two places:
-1. scripts.build_rag  -> sentences that mention hazardous substances are removed
+  1. build_rag.py  -> sentences that mention hazardous substances are removed
                       before anything is stored in the knowledge base
   2. rag_chain.py  -> hazardous documents are filtered out at retrieval time,
                       and the final LLM answer is checked before it is returned

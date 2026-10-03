@@ -2,7 +2,6 @@ from datasets import load_dataset
 from sentence_transformers import SentenceTransformer
 import chromadb
 import re
-from pathlib import Path
 
 from models.safety import (
     contains_hazardous_substance,
@@ -19,8 +18,7 @@ DATASET_NAME = "abdulhamed/agriculture_qa_en_ar_pairs"
 
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-CHROMA_PATH = str(PROJECT_ROOT / "rag_data" / "chroma")
+CHROMA_PATH = "rag_data/chroma"
 
 COLLECTION_NAME = "agriculture_rag"
 
