@@ -1,0 +1,29 @@
+# Web apps
+streamlit
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+
+# Image + data
+pillow
+numpy
+pandas
+
+# Plant disease model (PyTorch)
+torch
+torchvision
+timm
+
+# Irrigation model
+# The artifacts were saved with scikit-learn 1.8/1.9; run `pip freeze | findstr scikit`
+# in your working environment and pin the exact version you trained/tested with.
+scikit-learn>=1.9
+joblib
+
+# RAG
+chromadb
+sentence-transformers
+datasets
+google-genai
+python-dotenv

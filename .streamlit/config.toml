@@ -1,0 +1,5 @@
+[theme]
+primaryColor = "#2E6946"
+backgroundColor = "transparent"
+secondaryBackgroundColor = "rgba(255, 255, 255, 0.35)"
+textColor = "#12331F"
